@@ -15,5 +15,5 @@
 homepage: "https://www.iubenda.com"
 documentation: "https://www.iubenda.com/en/help/1177-cookie-solution-getting-started"
 versions:
-  - sha: 5f02a788b90ae804f86b04aa24af8937e567874a
-    changeNotes: Initial Version
+  - sha: 9030111ec795aa6a3ac6121f3af1a982838be6ee
+    changeNotes: Initial release
