@@ -110,6 +110,18 @@ ___TEMPLATE_PARAMETERS___
         ],
         "simpleValueType": true,
         "defaultValue": "denied"
+      },
+      {
+        "type": "TEXT",
+        "name": "waitForUpdate",
+        "displayName": "Wait for update",
+        "simpleValueType": true,
+        "defaultValue": 2000,
+        "valueValidators": [
+          {
+            "type": "NON_NEGATIVE_NUMBER"
+          }
+        ]
       }
     ]
   },
@@ -217,6 +229,7 @@ const setDefaultConsentState = require('setDefaultConsentState');
 const updateConsentState = require('updateConsentState');
 const GtmObject = require('Object');
 const JSON = require('JSON');
+const makeInteger = require('makeInteger');
 const copyFromWindow = require('copyFromWindow');
 const setInWindow = require('setInWindow');
 const createQueue = require('createQueue');
@@ -239,7 +252,8 @@ function main() {
     ad_storage: data.purposeAdvertising,
     personalization_storage: data.purposeExperience,
     functionality_storage: data.purposeBasic,
-    security_storage: data.purposeBasic
+    security_storage: data.purposeBasic,
+    wait_for_update: makeInteger(data.waitForUpdate)
   });
 
   setupIubDataLayer();
@@ -643,6 +657,37 @@ ___WEB_PERMISSIONS___
                     "boolean": true
                   }
                 ]
+              },
+              {
+                "type": 3,
+                "mapKey": [
+                  {
+                    "type": 1,
+                    "string": "consentType"
+                  },
+                  {
+                    "type": 1,
+                    "string": "read"
+                  },
+                  {
+                    "type": 1,
+                    "string": "write"
+                  }
+                ],
+                "mapValue": [
+                  {
+                    "type": 1,
+                    "string": "wait_for_update"
+                  },
+                  {
+                    "type": 8,
+                    "boolean": true
+                  },
+                  {
+                    "type": 8,
+                    "boolean": true
+                  }
+                ]
               }
             ]
           }
@@ -868,7 +913,10 @@ scenarios: []
 
 ___NOTES___
 
-1.0.0 - 2022-06-29
+1.1.0 - 2022-08-10
+* Add wait_for_update parameter, https://app.asana.com/0/215506225642940/1202738066967665/f
+
+1.0.0 - 2022-07-01
 ==================
 * Initial release
 
