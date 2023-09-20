@@ -9,7 +9,7 @@ Google may provide), as modified from time to time.
 ___INFO___
 
 {
-  "displayName": "iubenda Cookie Solution",
+  "displayName": "iubenda Privacy Controls and Cookie Solution",
   "description": "Cookie consent management for the ePrivacy, GDPR and CCPA.",
   "categories": [
     "TAG_MANAGEMENT",
@@ -913,7 +913,12 @@ scenarios: []
 
 ___NOTES___
 
+1.2.0 - 2023-09-20
+==================
+* Rename displayName in GTM info.json, https://app.asana.com/0/215506225642940/1205528510434063/f
+
 1.1.0 - 2022-08-10
+==================
 * Add wait_for_update parameter, https://app.asana.com/0/215506225642940/1202738066967665/f
 
 1.0.0 - 2022-07-01
