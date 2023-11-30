@@ -237,7 +237,6 @@ const injectScript = require('injectScript');
 
 let isFirstUpdate = true;
 let defaultConsent = null;
-let iubDataLayerPush;
 
 function main() {
   log('data =', data);
@@ -253,6 +252,8 @@ function main() {
     personalization_storage: data.purposeExperience,
     functionality_storage: data.purposeBasic,
     security_storage: data.purposeBasic,
+    ad_user_data: data.purposeAdvertising,
+    ad_personalization: data.purposeAdvertising,
     wait_for_update: makeInteger(data.waitForUpdate)
   });
 
@@ -274,6 +275,16 @@ function processDataLayerCommand(elem) {
   }
 }
 
+const consentTypes = {
+  analytics_storage: true,
+  ad_storage: true,
+  personalization_storage: true,
+  functionality_storage: true,
+  security_storage: true,
+  ad_user_data: true,
+  ad_personalization: true
+};
+
 function setDefaultConsent(opts) {
   setDefaultConsentState(opts);
   defaultConsent = opts;
@@ -284,20 +295,22 @@ function updateConsent(opts) {
   const payload = {};
 
   for (const key of GtmObject.keys(opts)) {
-    const val = opts[key];
+    if (consentTypes[key]) {
+      const val = opts[key];
 
-    if (val !== 'undefined') {
-      if (val) {
-        payload[key] = 'granted';
-        continue;
+      if (val !== 'undefined') {
+        if (val) {
+          payload[key] = 'granted';
+          continue;
+        }
+
+        if (!shouldCheckDefault) {
+          continue;
+        }
+
+        const hasDefault = defaultConsent && defaultConsent[key];
+        payload[key] = hasDefault ? defaultConsent[key] : 'denied';
       }
-
-      if (!shouldCheckDefault) {
-        continue;
-      }
-
-      const hasDefault = defaultConsent && defaultConsent[key];
-      payload[key] = hasDefault ? defaultConsent[key] : 'denied';
     }
   }
 
@@ -315,17 +328,39 @@ function setupIubDataLayer() {
     setInWindow('_iub', {});
   }
 
+  const iubDataLayerPush = createQueue('_iub.gtmDataLayer');
+  const iubDataLayerPushV2 = createQueue('_iub.gtmDataLayerV2');
   const windowIubDataLayer = copyFromWindow('_iub.gtmDataLayer');
-  iubDataLayerPush = createQueue('_iub.gtmDataLayer');
-  setInWindow('_iub.gtmDataLayer.pushCommand', function windowIubDataLayerPush() {
+  const windowIubDataLayerV2 = copyFromWindow('_iub.gtmDataLayerV2');
+  let highestSupportedVersion = 1;
+  setInWindow('_iub.gtmDataLayerV2.pushCommand', function windowIubDataLayerV2Push() {
+    highestSupportedVersion = 2;
 
-    fnApply(iubDataLayerPush, arguments);
+    fnApply(iubDataLayerPushV2, arguments);
     fnApply(processDataLayerCommand, arguments);
   }, true);
+  setInWindow('_iub.gtmDataLayer.pushCommand', function windowIubDataLayerPush() {
+    if (highestSupportedVersion <= 1) {
+
+      fnApply(iubDataLayerPush, arguments);
+      fnApply(processDataLayerCommand, arguments);
+    }
+  }, true);
+
+  if (windowIubDataLayerV2) {
+    highestSupportedVersion = 2;
+
+    for (const item of windowIubDataLayerV2) {
+      processDataLayerCommand(item);
+    }
+  }
 
   if (windowIubDataLayer) {
-    for (const item of windowIubDataLayer) {
-      processDataLayerCommand(item);
+    if (highestSupportedVersion <= 1) {
+
+      for (const item of windowIubDataLayer) {
+        processDataLayerCommand(item);
+      }
     }
   }
 }
@@ -677,6 +712,68 @@ ___WEB_PERMISSIONS___
                 "mapValue": [
                   {
                     "type": 1,
+                    "string": "ad_user_data"
+                  },
+                  {
+                    "type": 8,
+                    "boolean": true
+                  },
+                  {
+                    "type": 8,
+                    "boolean": true
+                  }
+                ]
+              },
+              {
+                "type": 3,
+                "mapKey": [
+                  {
+                    "type": 1,
+                    "string": "consentType"
+                  },
+                  {
+                    "type": 1,
+                    "string": "read"
+                  },
+                  {
+                    "type": 1,
+                    "string": "write"
+                  }
+                ],
+                "mapValue": [
+                  {
+                    "type": 1,
+                    "string": "ad_personalization"
+                  },
+                  {
+                    "type": 8,
+                    "boolean": true
+                  },
+                  {
+                    "type": 8,
+                    "boolean": true
+                  }
+                ]
+              },
+              {
+                "type": 3,
+                "mapKey": [
+                  {
+                    "type": 1,
+                    "string": "consentType"
+                  },
+                  {
+                    "type": 1,
+                    "string": "read"
+                  },
+                  {
+                    "type": 1,
+                    "string": "write"
+                  }
+                ],
+                "mapValue": [
+                  {
+                    "type": 1,
                     "string": "wait_for_update"
                   },
                   {
@@ -866,6 +963,84 @@ ___WEB_PERMISSIONS___
                     "boolean": false
                   }
                 ]
+              },
+              {
+                "type": 3,
+                "mapKey": [
+                  {
+                    "type": 1,
+                    "string": "key"
+                  },
+                  {
+                    "type": 1,
+                    "string": "read"
+                  },
+                  {
+                    "type": 1,
+                    "string": "write"
+                  },
+                  {
+                    "type": 1,
+                    "string": "execute"
+                  }
+                ],
+                "mapValue": [
+                  {
+                    "type": 1,
+                    "string": "_iub.gtmDataLayerV2"
+                  },
+                  {
+                    "type": 8,
+                    "boolean": true
+                  },
+                  {
+                    "type": 8,
+                    "boolean": true
+                  },
+                  {
+                    "type": 8,
+                    "boolean": false
+                  }
+                ]
+              },
+              {
+                "type": 3,
+                "mapKey": [
+                  {
+                    "type": 1,
+                    "string": "key"
+                  },
+                  {
+                    "type": 1,
+                    "string": "read"
+                  },
+                  {
+                    "type": 1,
+                    "string": "write"
+                  },
+                  {
+                    "type": 1,
+                    "string": "execute"
+                  }
+                ],
+                "mapValue": [
+                  {
+                    "type": 1,
+                    "string": "_iub.gtmDataLayerV2.pushCommand"
+                  },
+                  {
+                    "type": 8,
+                    "boolean": true
+                  },
+                  {
+                    "type": 8,
+                    "boolean": true
+                  },
+                  {
+                    "type": 8,
+                    "boolean": false
+                  }
+                ]
               }
             ]
           }
@@ -913,9 +1088,14 @@ scenarios: []
 
 ___NOTES___
 
+2.0.0 - 2023-11-27
+==================
+* Implement Google consent mode v2, https://app.asana.com/0/0/1205421168278986/f
+* Implement Consent Mode v2 | implement safe v2 update, https://app.asana.com/0/0/1205738393169140/f
+
 1.2.0 - 2023-09-20
 ==================
-* Rename displayName in GTM info.json, https://app.asana.com/0/215506225642940/1205528510434063/f
+* Rename GTM template, https://app.asana.com/0/215506225642940/1205528510434063/f
 
 1.1.0 - 2022-08-10
 ==================
