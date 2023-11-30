@@ -15,6 +15,8 @@
 homepage: "https://www.iubenda.com"
 documentation: "https://www.iubenda.com/en/help/1177-cookie-solution-getting-started"
 versions:
+  - sha: b3152729494b435d9d3fc364c4bf1b9f388673c3
+    changeNotes: Support for Google Consent Mode V2
   - sha: b4f3026c186a79eec4ecfd25acfb3d8741ec8377
     changeNotes: Rename GTM template
   - sha: 2fb2083d86f5ff7972d3fd4efb1fca7e7726af67
