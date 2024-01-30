@@ -430,7 +430,7 @@ function updateCSConfigurationByPageLang(csConfiguration) {
   if (pageLangChunks.length > 1) {
     langs.push(pageLangChunks[0].toLowerCase() + '-' + pageLangChunks[1].toUpperCase());
   }
-  langs.push(pageLangChunks[0]);
+  langs.push(pageLangChunks[0].toLowerCase());
   for (const lang of langs) {
     if (!csConfigurationByLang.hasOwnProperty(lang)) {
       continue;
