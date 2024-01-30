@@ -189,6 +189,21 @@ ___TEMPLATE_PARAMETERS___
         ]
       },
       {
+        "type": "TEXT",
+        "name": "csConfigurationByLangJson",
+        "displayName": "CS configuration by page language",
+        "simpleValueType": true,
+        "lineCount": 10,
+        "help": "You can specify a JSON object (keys: language code, values: object with custom fields for CS configuration).\nThis requires that you add this code before inserting the GTM code in your pages:\n\u0026lt;script\u0026gt;\n(window._iub \u003d window._iub || {}).pageLang \u003d window.document \u0026\u0026 window.document.documentElement ? window.document.documentElement.lang : \u0027\u0027;\n\u0026lt;/script\u0026gt;",
+        "enablingConditions": [
+          {
+            "paramName": "embedCS",
+            "paramValue": "auto",
+            "type": "EQUALS"
+          }
+        ]
+      },
+      {
         "type": "SELECT",
         "name": "csChannel",
         "displayName": "CS channel",
@@ -376,6 +391,7 @@ function embedCS() {
   }
 
   csConfiguration.googleConsentMode = 'template';
+  updateCSConfigurationByPageLang(csConfiguration);
   const windowIub = copyFromWindow('_iub');
 
   if (!windowIub) {
@@ -392,6 +408,48 @@ function embedCS() {
 
     data.gtmOnFailure();
   });
+}
+
+function updateCSConfigurationByPageLang(csConfiguration) {
+  const pageLang = copyFromWindow('_iub.pageLang');
+  if (typeof pageLang !== 'string' || pageLang === '') {
+    log('csConfiguration not customized by page language because _iub.pageLang is not a string, or is an empty string');
+    return;
+  }
+  if (typeof data.csConfigurationByLangJson !== 'string' || data.csConfigurationByLangJson === '') {
+    log('csConfiguration not customized by page language because csConfigurationByLangJson is empty');
+    return;
+  }
+  const csConfigurationByLang = JSON.parse(data.csConfigurationByLangJson);
+  if (typeof csConfigurationByLang !== 'object') {
+    log('csConfiguration not customized by page language because csConfigurationByLangJson is not valid');
+    return;
+  }
+  const langs = [];
+  const pageLangChunks = pageLang.replace('_', '-').split('-');
+  if (pageLangChunks.length > 1) {
+    langs.push(pageLangChunks[0].toLowerCase() + '-' + pageLangChunks[1].toUpperCase());
+  }
+  langs.push(pageLangChunks[0]);
+  for (const lang of langs) {
+    if (!csConfigurationByLang.hasOwnProperty(lang)) {
+      continue;
+    }
+    if (typeof csConfigurationByLang[lang] !== 'object') {
+      log('csConfiguration not customized by page language because csConfigurationByLangJson["' + lang + '"] is not valid');
+      return;
+    }
+    log('Using csConfigurationByLangJson["' + lang + '"]', csConfigurationByLang[lang]);
+    for (const field in csConfigurationByLang[lang]) {
+      csConfiguration[field] = csConfigurationByLang[lang][field];
+    }
+    if (!csConfigurationByLang[lang].hasOwnProperty('lang')) {
+      csConfiguration.lang = lang;
+    }
+    log('Final csConfiguration', csConfiguration);
+    return;
+  }
+  log('csConfigurationByLang does not have any of these languages', langs);
 }
 
 function embedScripts(config, onSuccess, onFail) {
@@ -1035,6 +1093,45 @@ ___WEB_PERMISSIONS___
                   {
                     "type": 8,
                     "boolean": true
+                  },
+                  {
+                    "type": 8,
+                    "boolean": false
+                  }
+                ]
+              },
+              {
+                "type": 3,
+                "mapKey": [
+                  {
+                    "type": 1,
+                    "string": "key"
+                  },
+                  {
+                    "type": 1,
+                    "string": "read"
+                  },
+                  {
+                    "type": 1,
+                    "string": "write"
+                  },
+                  {
+                    "type": 1,
+                    "string": "execute"
+                  }
+                ],
+                "mapValue": [
+                  {
+                    "type": 1,
+                    "string": "_iub.pageLang"
+                  },
+                  {
+                    "type": 8,
+                    "boolean": true
+                  },
+                  {
+                    "type": 8,
+                    "boolean": false
                   },
                   {
                     "type": 8,
