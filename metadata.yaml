@@ -15,6 +15,8 @@
 homepage: "https://www.iubenda.com"
 documentation: "https://www.iubenda.com/en/help/1177-cookie-solution-getting-started"
 versions:
+  - sha: 228b7b5e77046a4e5287b41a28e715a15c81ec80
+    changeNotes: Change GTM template default channel to current
   - sha: b3152729494b435d9d3fc364c4bf1b9f388673c3
     changeNotes: Support for Google Consent Mode V2
   - sha: b4f3026c186a79eec4ecfd25acfb3d8741ec8377
