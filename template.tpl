@@ -195,12 +195,12 @@ ___TEMPLATE_PARAMETERS___
         "macrosInSelect": false,
         "selectItems": [
           {
-            "value": "beta",
-            "displayValue": "Beta"
-          },
-          {
             "value": "current",
             "displayValue": "Current"
+          },
+          {
+            "value": "beta",
+            "displayValue": "Beta"
           },
           {
             "value": "stable",
@@ -1087,6 +1087,10 @@ scenarios: []
 
 
 ___NOTES___
+
+2.0.1 - 2024-03-07
+==================
+* Change GTM template default channel to current, https://app.asana.com/0/0/1206474874048897/f
 
 2.0.0 - 2023-11-27
 ==================
