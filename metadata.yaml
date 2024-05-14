@@ -15,6 +15,8 @@
 homepage: "https://www.iubenda.com"
 documentation: "https://www.iubenda.com/en/help/1177-cookie-solution-getting-started"
 versions:
+  - sha: 6566bc4835c39db8fed13d3a8746e3e70f48b0e6
+    changeNotes: Add csLangConfiguration map on GTM template,Fix conditional of update consent in gtm template
   - sha: 228b7b5e77046a4e5287b41a28e715a15c81ec80
     changeNotes: Change GTM template default channel to current
   - sha: b3152729494b435d9d3fc364c4bf1b9f388673c3
