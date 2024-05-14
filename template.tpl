@@ -189,6 +189,26 @@ ___TEMPLATE_PARAMETERS___
         ]
       },
       {
+        "type": "TEXT",
+        "name": "csLangConfigurationJson",
+        "displayName": "CS language configuration",
+        "simpleValueType": true,
+        "enablingConditions": [
+          {
+            "paramName": "embedCS",
+            "paramValue": "auto",
+            "type": "EQUALS"
+          }
+        ],
+        "lineCount": 10,
+        "help": "the configuration part (_iub.csLangConfiguration) specific to each language",
+        "valueValidators": [
+          {
+            "type": "NON_EMPTY"
+          }
+        ]
+      },
+      {
         "type": "SELECT",
         "name": "csChannel",
         "displayName": "CS channel",
@@ -298,19 +318,17 @@ function updateConsent(opts) {
     if (consentTypes[key]) {
       const val = opts[key];
 
-      if (val !== 'undefined') {
-        if (val) {
-          payload[key] = 'granted';
-          continue;
-        }
-
-        if (!shouldCheckDefault) {
-          continue;
-        }
-
-        const hasDefault = defaultConsent && defaultConsent[key];
-        payload[key] = hasDefault ? defaultConsent[key] : 'denied';
+      if (typeof val !== 'undefined') {
+        payload[key] = val ? 'granted' : 'denied';
+        continue;
       }
+
+      if (!shouldCheckDefault) {
+        continue;
+      }
+
+      const hasDefault = defaultConsent && defaultConsent[key];
+      payload[key] = hasDefault ? defaultConsent[key] : 'denied';
     }
   }
 
@@ -375,6 +393,7 @@ function embedCS() {
     return;
   }
 
+  const csLangConfiguration = JSON.parse(data.csLangConfigurationJson);
   csConfiguration.googleConsentMode = 'template';
   const windowIub = copyFromWindow('_iub');
 
@@ -383,6 +402,7 @@ function embedCS() {
   }
 
   setInWindow('_iub.csConfiguration', csConfiguration);
+  setInWindow('_iub.csLangConfiguration', csLangConfiguration);
   embedScripts(csConfiguration, () => {
     log('embedded CS scripts');
 
@@ -909,6 +929,45 @@ ___WEB_PERMISSIONS___
                 "mapValue": [
                   {
                     "type": 1,
+                    "string": "_iub.csLangConfiguration"
+                  },
+                  {
+                    "type": 8,
+                    "boolean": true
+                  },
+                  {
+                    "type": 8,
+                    "boolean": true
+                  },
+                  {
+                    "type": 8,
+                    "boolean": false
+                  }
+                ]
+              },
+              {
+                "type": 3,
+                "mapKey": [
+                  {
+                    "type": 1,
+                    "string": "key"
+                  },
+                  {
+                    "type": 1,
+                    "string": "read"
+                  },
+                  {
+                    "type": 1,
+                    "string": "write"
+                  },
+                  {
+                    "type": 1,
+                    "string": "execute"
+                  }
+                ],
+                "mapValue": [
+                  {
+                    "type": 1,
                     "string": "_iub.gtmDataLayer"
                   },
                   {
@@ -1087,6 +1146,10 @@ scenarios: []
 
 
 ___NOTES___
+
+2.1.0 - 2024-05-14
+==================
+* Add csLangConfiguration map on GTM template, https://app.asana.com/0/215506225642940/1207219173429602/f
 
 2.0.1 - 2024-03-07
 ==================
