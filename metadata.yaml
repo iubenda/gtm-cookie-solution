@@ -15,6 +15,8 @@
 homepage: "https://www.iubenda.com"
 documentation: "https://www.iubenda.com/en/help/1177-cookie-solution-getting-started"
 versions:
+  - sha: 4fff6716c2a666a270742f9e6f820596153f25e7
+    changeNotes: Make csLangConfiguration an optional field 
   - sha: 6566bc4835c39db8fed13d3a8746e3e70f48b0e6
     changeNotes: Add csLangConfiguration map on GTM template,Fix conditional of update consent in gtm template
   - sha: 228b7b5e77046a4e5287b41a28e715a15c81ec80
