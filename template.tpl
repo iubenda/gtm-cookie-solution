@@ -202,11 +202,7 @@ ___TEMPLATE_PARAMETERS___
         ],
         "lineCount": 10,
         "help": "the configuration part (_iub.csLangConfiguration) specific to each language",
-        "valueValidators": [
-          {
-            "type": "NON_EMPTY"
-          }
-        ]
+        "valueValidators": []
       },
       {
         "type": "SELECT",
@@ -1146,6 +1142,10 @@ scenarios: []
 
 
 ___NOTES___
+
+2.1.1 - 2024-05-16
+==================
+* Make csLangConfiguration an optional field, https://app.asana.com/0/0/1207330135093962/f
 
 2.1.0 - 2024-05-14
 ==================
