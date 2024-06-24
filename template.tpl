@@ -1284,7 +1284,7 @@ ___NOTES___
 
 2.1.1 - 2024-05-16
 ==================
-* Fix csLangConfigurationJson being required in GTM template, https://app.asana.com/0/0/1207330135093962/f
+* Make csLangConfiguration an optional field, https://app.asana.com/0/0/1207330135093962/f
 
 2.1.0 - 2024-05-14
 ==================
