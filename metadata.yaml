@@ -15,7 +15,7 @@
 homepage: "https://www.iubenda.com"
 documentation: "https://www.iubenda.com/en/help/1177-cookie-solution-getting-started"
 versions:
-  - sha: 7d8168c8a3f8dd073ae8a5b73c492c89f2fb8109
+  - sha: cad6eaf0dc84489d494a416c1a14164f3c1c5022
     changeNotes: Add support for region-specific consent
   - sha: 80e451a3a18cefc387a3476499d40f69afb5d405
     changeNotes: Make csLangConfiguration an optional field 
