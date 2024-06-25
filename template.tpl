@@ -126,6 +126,120 @@ ___TEMPLATE_PARAMETERS___
     ]
   },
   {
+    "type": "GROUP",
+    "name": "regionDefaultConsent",
+    "displayName": "Purpose default consents (per region)",
+    "groupStyle": "ZIPPY_CLOSED",
+    "subParams": [
+      {
+        "type": "PARAM_TABLE",
+        "name": "regionSpecificDefaultConsent",
+        "displayName": "",
+        "paramTableColumns": [
+          {
+            "param": {
+              "type": "TEXT",
+              "name": "regionCode",
+              "displayName": "Region Code",
+              "simpleValueType": true,
+              "valueHint": "US",
+              "valueValidators": [
+                {
+                  "type": "NON_EMPTY"
+                }
+              ]
+            },
+            "isUnique": true
+          },
+          {
+            "param": {
+              "type": "SELECT",
+              "name": "purposeBasic",
+              "displayName": "Basic functionalities",
+              "macrosInSelect": false,
+              "selectItems": [
+                {
+                  "value": "denied",
+                  "displayValue": "Denied"
+                },
+                {
+                  "value": "granted",
+                  "displayValue": "Granted"
+                }
+              ],
+              "simpleValueType": true,
+              "defaultValue": "denied"
+            },
+            "isUnique": false
+          },
+          {
+            "param": {
+              "type": "SELECT",
+              "name": "purposeExperience",
+              "displayName": "Experience enhancement",
+              "macrosInSelect": false,
+              "selectItems": [
+                {
+                  "value": "denied",
+                  "displayValue": "Denied"
+                },
+                {
+                  "value": "granted",
+                  "displayValue": "Granted"
+                }
+              ],
+              "simpleValueType": true,
+              "defaultValue": "denied"
+            },
+            "isUnique": false
+          },
+          {
+            "param": {
+              "type": "SELECT",
+              "name": "purposeMeasurement",
+              "displayName": "Measurement",
+              "macrosInSelect": false,
+              "selectItems": [
+                {
+                  "value": "denied",
+                  "displayValue": "Denied"
+                },
+                {
+                  "value": "granted",
+                  "displayValue": "Granted"
+                }
+              ],
+              "simpleValueType": true,
+              "defaultValue": "denied"
+            },
+            "isUnique": false
+          },
+          {
+            "param": {
+              "type": "SELECT",
+              "name": "purposeAdvertising",
+              "displayName": "Targeting & Advertising",
+              "macrosInSelect": false,
+              "selectItems": [
+                {
+                  "value": "denied",
+                  "displayValue": "Denied"
+                },
+                {
+                  "value": "granted",
+                  "displayValue": "Granted"
+                }
+              ],
+              "simpleValueType": true,
+              "defaultValue": "denied"
+            },
+            "isUnique": false
+          }
+        ]
+      }
+    ]
+  },
+  {
     "type": "CHECKBOX",
     "name": "urlPassthrough",
     "checkboxText": "URL passthrough",
@@ -251,8 +365,19 @@ const setInWindow = require('setInWindow');
 const createQueue = require('createQueue');
 const injectScript = require('injectScript');
 
+const isConsentGranted = require('isConsentGranted');
+const callLater = require('callLater');
 let isFirstUpdate = true;
 let defaultConsent = null;
+const consentTypes = {
+  analytics_storage: true,
+  ad_storage: true,
+  personalization_storage: true,
+  functionality_storage: true,
+  security_storage: true,
+  ad_user_data: true,
+  ad_personalization: true
+};
 
 function main() {
   log('data =', data);
@@ -262,7 +387,24 @@ function main() {
     url_passthrough: data.urlPassthrough,
     ads_data_redaction: data.adsDataRedaction
   });
-  setDefaultConsent({
+
+  if (data.regionSpecificDefaultConsent) {
+    for (const consent of data.regionSpecificDefaultConsent) {
+      setDefaultConsentState({
+        analytics_storage: consent.purposeMeasurement,
+        ad_storage: consent.purposeAdvertising,
+        personalization_storage: consent.purposeExperience,
+        functionality_storage: consent.purposeBasic,
+        security_storage: consent.purposeBasic,
+        ad_user_data: consent.purposeAdvertising,
+        ad_personalization: consent.purposeAdvertising,
+        region: [consent.regionCode],
+        wait_for_update: makeInteger(data.waitForUpdate)
+      });
+    }
+  }
+
+  setDefaultConsentState({
     analytics_storage: data.purposeMeasurement,
     ad_storage: data.purposeAdvertising,
     personalization_storage: data.purposeExperience,
@@ -271,6 +413,14 @@ function main() {
     ad_user_data: data.purposeAdvertising,
     ad_personalization: data.purposeAdvertising,
     wait_for_update: makeInteger(data.waitForUpdate)
+  });
+
+  callLater(() => {
+    defaultConsent = {};
+
+    for (const key of GtmObject.keys(consentTypes)) {
+      defaultConsent[key] = isConsentGranted(key) ? 'granted' : 'denied';
+    }
   });
 
   setupIubDataLayer();
@@ -289,21 +439,6 @@ function processDataLayerCommand(elem) {
       updateConsent(elem[1]);
     }
   }
-}
-
-const consentTypes = {
-  analytics_storage: true,
-  ad_storage: true,
-  personalization_storage: true,
-  functionality_storage: true,
-  security_storage: true,
-  ad_user_data: true,
-  ad_personalization: true
-};
-
-function setDefaultConsent(opts) {
-  setDefaultConsentState(opts);
-  defaultConsent = opts;
 }
 
 function updateConsent(opts) {
@@ -1142,6 +1277,10 @@ scenarios: []
 
 
 ___NOTES___
+
+2.1.2 - 2024-06-24
+==================
+* Add the ability to specify consent mode default consents per region in GTM, https://app.asana.com/0/0/1202566603078816/f
 
 2.1.1 - 2024-05-16
 ==================
