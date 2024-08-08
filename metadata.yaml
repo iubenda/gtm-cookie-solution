@@ -15,6 +15,8 @@
 homepage: "https://www.iubenda.com"
 documentation: "https://www.iubenda.com/en/help/1177-cookie-solution-getting-started"
 versions:
+  - sha: 6e7ac9a801a34c00b17792adf41e67e6507f73dd
+    changeNotes: Add vendor details section
   - sha: cad6eaf0dc84489d494a416c1a14164f3c1c5022
     changeNotes: Add support for region-specific consent
   - sha: 80e451a3a18cefc387a3476499d40f69afb5d405
