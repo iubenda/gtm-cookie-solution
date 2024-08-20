@@ -39,7 +39,7 @@ ___VENDOR_DETAILS___
   ],
   "vendorName": "iubenda",
   "description": "All-in-one lawyer-backed solution that covers your privacy and cookie policy, cookie banners, terms and conditions, and consent preferences.",
-  "homepageUrl": "https://www.iubenda.com",
+  "homepageUrl": "https://www.iubenda.com/en/google-consent-mode-v2-certified-cmp?utm_source=googlecmp&utm_medium=web&utm_campaign=consentmode",
   "freeTrial": "90-day unlimited trial",
   "freeTier": "Free tier available",
   "price": "Essentials: $5.99/month \nAdvanced: $24.99/month \nUltimate: $99.99/month",
@@ -417,7 +417,6 @@ const copyFromWindow = require('copyFromWindow');
 const setInWindow = require('setInWindow');
 const createQueue = require('createQueue');
 const injectScript = require('injectScript');
-
 const isConsentGranted = require('isConsentGranted');
 const callLater = require('callLater');
 let isFirstUpdate = true;
@@ -431,16 +430,13 @@ const consentTypes = {
   ad_user_data: true,
   ad_personalization: true
 };
-
 function main() {
   log('data =', data);
-
   gtagSet({
     'developer_id.dZTJkMz': true,
     url_passthrough: data.urlPassthrough,
     ads_data_redaction: data.adsDataRedaction
   });
-
   if (data.regionSpecificDefaultConsent) {
     for (const consent of data.regionSpecificDefaultConsent) {
       setDefaultConsentState({
@@ -456,7 +452,6 @@ function main() {
       });
     }
   }
-
   setDefaultConsentState({
     analytics_storage: data.purposeMeasurement,
     ad_storage: data.purposeAdvertising,
@@ -467,25 +462,19 @@ function main() {
     ad_personalization: data.purposeAdvertising,
     wait_for_update: makeInteger(data.waitForUpdate)
   });
-
   callLater(() => {
     defaultConsent = {};
-
     for (const key of GtmObject.keys(consentTypes)) {
       defaultConsent[key] = isConsentGranted(key) ? 'granted' : 'denied';
     }
   });
-
   setupIubDataLayer();
-
   if (data.embedCS === 'auto') {
     embedCS();
   } else {
-
     data.gtmOnSuccess();
   }
 }
-
 function processDataLayerCommand(elem) {
   if (typeof elem === 'object') {
     if (elem[0] === 'updateConsent') {
@@ -493,43 +482,33 @@ function processDataLayerCommand(elem) {
     }
   }
 }
-
 function updateConsent(opts) {
   const shouldCheckDefault = !isFirstUpdate;
   const payload = {};
-
   for (const key of GtmObject.keys(opts)) {
     if (consentTypes[key]) {
       const val = opts[key];
-
       if (typeof val !== 'undefined') {
         payload[key] = val ? 'granted' : 'denied';
         continue;
       }
-
       if (!shouldCheckDefault) {
         continue;
       }
-
       const hasDefault = defaultConsent && defaultConsent[key];
       payload[key] = hasDefault ? defaultConsent[key] : 'denied';
     }
   }
-
   if (GtmObject.keys(payload).length !== 0) {
     updateConsentState(payload);
-
     isFirstUpdate = false;
   }
 }
-
 function setupIubDataLayer() {
   const windowIub = copyFromWindow('_iub');
-
   if (!windowIub) {
     setInWindow('_iub', {});
   }
-
   const iubDataLayerPush = createQueue('_iub.gtmDataLayer');
   const iubDataLayerPushV2 = createQueue('_iub.gtmDataLayerV2');
   const windowIubDataLayer = copyFromWindow('_iub.gtmDataLayer');
@@ -537,137 +516,107 @@ function setupIubDataLayer() {
   let highestSupportedVersion = 1;
   setInWindow('_iub.gtmDataLayerV2.pushCommand', function windowIubDataLayerV2Push() {
     highestSupportedVersion = 2;
-
     fnApply(iubDataLayerPushV2, arguments);
     fnApply(processDataLayerCommand, arguments);
   }, true);
   setInWindow('_iub.gtmDataLayer.pushCommand', function windowIubDataLayerPush() {
     if (highestSupportedVersion <= 1) {
-
       fnApply(iubDataLayerPush, arguments);
       fnApply(processDataLayerCommand, arguments);
     }
   }, true);
-
   if (windowIubDataLayerV2) {
     highestSupportedVersion = 2;
-
     for (const item of windowIubDataLayerV2) {
       processDataLayerCommand(item);
     }
   }
-
   if (windowIubDataLayer) {
     if (highestSupportedVersion <= 1) {
-
       for (const item of windowIubDataLayer) {
         processDataLayerCommand(item);
       }
     }
   }
 }
-
 function embedCS() {
   const csConfiguration = JSON.parse(data.csConfigurationJson);
-
   if (typeof csConfiguration !== 'object') {
     log('csConfiguration is not valid');
-
     data.gtmOnFailure();
     return;
   }
-
   const csLangConfiguration = JSON.parse(data.csLangConfigurationJson);
   csConfiguration.googleConsentMode = 'template';
   const windowIub = copyFromWindow('_iub');
-
   if (!windowIub) {
     setInWindow('_iub', {});
   }
-
   setInWindow('_iub.csConfiguration', csConfiguration);
   setInWindow('_iub.csLangConfiguration', csLangConfiguration);
   embedScripts(csConfiguration, () => {
     log('embedded CS scripts');
-
     data.gtmOnSuccess();
   }, () => {
     log('failed to embed CS scripts');
-
     data.gtmOnFailure();
   });
 }
-
 function embedScripts(config, onSuccess, onFail) {
   const channel = data.csChannel;
   const scriptsToInject = [];
-
   if (config.enableTcf || config.enableCMP) {
     const tcfStub = makeUrl(channel, 'tcf', 'stub.js');
     const safeTcf = makeUrl(channel, 'tcf', 'safe-tcf.js');
     scriptsToInject.push(tcfStub, safeTcf);
   }
-
   if (config.enableCcpa) {
     const ccpaStub = makeUrl(channel, 'ccpa', 'stub.js');
     scriptsToInject.push(ccpaStub);
   }
-
   scriptsToInject.push(makeUrl(channel, '', 'iubenda_cs.js'));
   let scriptsInjected = 0;
   let failed = false;
-
   const localOnSuccess = () => {
     scriptsInjected++;
-
     if (scriptsInjected === scriptsToInject.length && !failed) {
       onSuccess();
     }
   };
-
   const localOnFail = () => {
     if (!failed) {
       failed = true;
       onFail();
     }
   };
-
   for (const script of scriptsToInject) {
     injectScript(script, localOnSuccess, localOnFail);
   }
-
   if (scriptsToInject.length === 0) {
     onSuccess();
   }
 }
-
 function makeUrl(channel, feature, script) {
   const featurePart = feature ? feature + '/' : '';
   const channelPart = channel === 'current' ? '' : channel + '/';
-
   return 'https://cdn.iubenda.com/cs/' + featurePart + channelPart + script;
-} // This function acts like Function.prototype.apply, which does not work in the sandbox environment
+}
 
-
+// This function acts like Function.prototype.apply, which does not work in the sandbox environment
 function fnApply(fn, args) {
   switch (args.length) {
     case 0:
       return fn();
-
     case 1:
       return fn(args[0]);
-
     case 2:
       return fn(args[0], args[1]);
-
     case 3:
       return fn(args[0], args[1], args[2]);
-
     default:
       return fn(args[0], args[1], args[2], args[3]);
   }
 }
-
 main();
 
 
@@ -1330,6 +1279,14 @@ scenarios: []
 
 
 ___NOTES___
+
+2.1.4 - 2024-08-19
+==================
+* Update vendor details URL, https://app.asana.com/0/0/1208075350224779/f
+
+2.1.3 - 2024-08-08
+==================
+* Add vendor details section to GTM template, https://app.asana.com/0/0/1207977714365573/f
 
 2.1.2 - 2024-06-24
 ==================
