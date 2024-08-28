@@ -85,7 +85,8 @@ ___VENDOR_DETAILS___
     "IOS",
     "ANDROID",
     "AMP"
-  ]
+  ],
+  "termsAndConditionsUrl": "https://www.iubenda.com/en/user/tos/legal"
 }
 
 
@@ -1285,6 +1286,10 @@ scenarios: []
 
 
 ___NOTES___
+
+2.1.6 - 2024-08-28
+==================
+* Add termsAndConditionsUrl, https://app.asana.com/0/0/1208166669923284/f
 
 2.1.5 - 2024-08-23
 ==================
