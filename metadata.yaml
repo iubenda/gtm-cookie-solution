@@ -15,6 +15,8 @@
 homepage: "https://www.iubenda.com"
 documentation: "https://www.iubenda.com/en/help/1177-cookie-solution-getting-started"
 versions:
+  - sha: 5626f7ac1563508b615ce15043899e0ad29bfab0
+    changeNotes: Update GTM Template preview images
   - sha: f5ac2922d6dc76c8f98a2645f775a7dbcbcae679
     changeNotes: Add termsAndConditionsUrl
   - sha: e03ff9d225215928294dd91070a6d1cf2848540c
