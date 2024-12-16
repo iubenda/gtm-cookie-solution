@@ -555,7 +555,7 @@ function embedCS() {
     data.gtmOnFailure();
     return;
   }
-  const csLangConfiguration = JSON.parse(data.csLangConfigurationJson);
+  const csLangConfiguration = data.csLangConfigurationJson ? JSON.parse(data.csLangConfigurationJson) : {};
   csConfiguration.googleConsentMode = 'template';
   const windowIub = copyFromWindow('_iub');
   if (!windowIub) {
@@ -1288,6 +1288,10 @@ scenarios: []
 
 
 ___NOTES___
+
+2.1.10 - 2024-12-16
+==================
+* Fix gtm template json parse, https://app.asana.com/0/0/1208768099704760/f
 
 2.1.9 - 2024-09-04
 ==================
