@@ -409,6 +409,63 @@ ___TEMPLATE_PARAMETERS___
         ]
       }
     ]
+  },
+  {
+    "type": "GROUP",
+    "name": "defaultConsentStorageGroup",
+    "displayName": "Apply consent default from storage (experimental)",
+    "groupStyle": "ZIPPY_CLOSED",
+    "subParams": [
+      {
+        "type": "CHECKBOX",
+        "name": "enableDefaultConsentFromStorage",
+        "checkboxText": "Set the default consent by reading the browser storage",
+        "simpleValueType": true,
+        "help": "This feature is experimental."
+      },
+      {
+        "type": "SELECT",
+        "name": "storageType",
+        "displayName": "Storage type",
+        "macrosInSelect": false,
+        "selectItems": [
+          {
+            "value": "cookie",
+            "displayValue": "Cookie"
+          },
+          {
+            "value": "localStorage",
+            "displayValue": "Local Storage"
+          }
+        ],
+        "simpleValueType": true,
+        "enablingConditions": []
+      },
+      {
+        "type": "SELECT",
+        "name": "storageIdType",
+        "displayName": "Cookie Solution ID Type",
+        "macrosInSelect": false,
+        "selectItems": [
+          {
+            "value": "siteId",
+            "displayValue": "Site ID"
+          },
+          {
+            "value": "cookiePolicyId",
+            "displayValue": "Cookie Policy ID"
+          }
+        ],
+        "simpleValueType": true
+      },
+      {
+        "type": "TEXT",
+        "name": "storageId",
+        "displayName": "Site ID or Cookie Policy ID",
+        "simpleValueType": true,
+        "help": "Depending on the Cookie Solution ID Type, specify the Site ID or the Cookie Policy ID"
+      }
+    ]
   }
 ]
 
@@ -428,6 +485,17 @@ const createQueue = require('createQueue');
 const injectScript = require('injectScript');
 const isConsentGranted = require('isConsentGranted');
 const callLater = require('callLater');
+const getCookieValues = require('getCookieValues');
+const localStorage = require('localStorage');
+const queryPermission = require('queryPermission');
+const dataLayerPush = createDataLayerQueue();
+const STORAGE_PREFIX = '_iub_cs-';
+const defaultConsentFromStorageActive = canUseDefaultConsentFromStorage();
+if (defaultConsentFromStorageActive) {
+  dataLayerPush({
+    event: 'iubenda_gtm_ready_event'
+  });
+}
 let isFirstUpdate = true;
 let defaultConsent = null;
 const consentTypes = {
@@ -461,16 +529,38 @@ function main() {
       });
     }
   }
-  setDefaultConsentState({
-    analytics_storage: data.purposeMeasurement,
-    ad_storage: data.purposeAdvertising,
-    personalization_storage: data.purposeExperience,
-    functionality_storage: data.purposeBasic,
-    security_storage: data.purposeBasic,
-    ad_user_data: data.purposeAdvertising,
-    ad_personalization: data.purposeAdvertising,
-    wait_for_update: makeInteger(data.waitForUpdate)
-  });
+  if (defaultConsentFromStorageActive) {
+    log('iubenda - default consent feature enabled');
+    const initialPreferencesCore = getInitialPreferencesCore(getStorageItemNameCore());
+    const initialPreferencesUspr = getInitialPreferencesUspr(getStorageItemNameUspr());
+    const initialPreferencesCcpa = getInitialPreferencesCcpa(getStorageItemNameCcpa());
+    log('iubenda - CORE= ', initialPreferencesCore);
+    log('iubenda - USPR= ', initialPreferencesUspr);
+    log('iubenda - CCPA= ', initialPreferencesCcpa);
+    setDefaultConsentState({
+      ad_storage: getAdStorageStore(initialPreferencesCore, initialPreferencesUspr),
+      ad_personalization: getAdPersonalizationStore(initialPreferencesCore, initialPreferencesUspr),
+      ad_user_data: getAdUserDataStore(initialPreferencesCore, initialPreferencesUspr),
+      analytics_storage: getAnalyticsStorageStore(initialPreferencesCore, initialPreferencesUspr, initialPreferencesCcpa),
+      functionality_storage: getFunctionalityStorageStore(initialPreferencesCore, initialPreferencesUspr),
+      personalization_storage: getPersonalizationStorageStore(initialPreferencesCore, initialPreferencesUspr),
+      security_storage: getSecurityStorageStore(initialPreferencesCore, initialPreferencesUspr)
+    });
+    dataLayerPush({
+      event: 'iubenda_gtm_default_consent_event'
+    });
+  } else {
+    setDefaultConsentState({
+      analytics_storage: data.purposeMeasurement,
+      ad_storage: data.purposeAdvertising,
+      personalization_storage: data.purposeExperience,
+      functionality_storage: data.purposeBasic,
+      security_storage: data.purposeBasic,
+      ad_user_data: data.purposeAdvertising,
+      ad_personalization: data.purposeAdvertising,
+      wait_for_update: makeInteger(data.waitForUpdate)
+    });
+  }
   callLater(() => {
     defaultConsent = {};
     for (const key of GtmObject.keys(consentTypes)) {
@@ -557,6 +647,24 @@ function embedCS() {
   }
   const csLangConfiguration = data.csLangConfigurationJson ? JSON.parse(data.csLangConfigurationJson) : {};
   csConfiguration.googleConsentMode = 'template';
+  if (defaultConsentFromStorageActive) {
+    csConfiguration.callback = {};
+    csConfiguration.callback.onReady = () => {
+      dataLayerPush({
+        event: 'iubenda_gtm_cs_ready_event'
+      });
+    };
+    csConfiguration.callback.onBannerShown = () => {
+      dataLayerPush({
+        event: 'iubenda_gtm_cs_banner_shown_event'
+      });
+    };
+    csConfiguration.callback.onCcpaOptOut = () => {
+      dataLayerPush({
+        event: 'iubenda_gtm_ccpa_optout_event'
+      });
+    };
+  }
   const windowIub = copyFromWindow('_iub');
   if (!windowIub) {
     setInWindow('_iub', {});
@@ -570,6 +678,156 @@ function embedCS() {
     log('failed to embed CS scripts');
     data.gtmOnFailure();
   });
+}
+function createDataLayerQueue() {
+  if (queryPermission('access_globals', 'readwrite', 'dataLayer')) {
+    return createQueue('dataLayer');
+  }
+  const emptyFunction = function () {};
+  return emptyFunction;
+}
+function canUseDefaultConsentFromStorage() {
+  return queryPermission('access_globals', 'readwrite', 'dataLayer') && data.enableDefaultConsentFromStorage === true ? true : false;
+}
+function getPreferenceObject(storageValue) {
+  let result = {};
+  if (typeof storageValue !== 'undefined' && storageValue.length > 0) {
+    log('returning= ', JSON.parse(storageValue[0]));
+    result = JSON.parse(storageValue[0]);
+  }
+  return result;
+}
+function getStorageItemNameCore() {
+  if (data.storageIdType === 'cookiePolicyId') {
+    return STORAGE_PREFIX + data.storageId;
+  }
+  return STORAGE_PREFIX + 's' + data.storageId;
+}
+function getStorageItemNameUspr() {
+  if (data.storageIdType === 'cookiePolicyId') {
+    return STORAGE_PREFIX + data.storageId + '-uspr';
+  }
+  return STORAGE_PREFIX + 's' + data.storageId + '-uspr';
+}
+function getStorageItemNameCcpa() {
+  return 'usprivacy';
+}
+function getStorageItem(itemName) {
+  log('storageType = ', data.storageType);
+  if (data.storageType === 'localStorage') {
+    return localStorage(itemName);
+  }
+  return getCookieValues(itemName);
+}
+function getInitialPreferencesCore(storageItemName) {
+  const prefs = getStorageItem(storageItemName);
+  return getPreferenceObject(prefs);
+}
+function getInitialPreferencesUspr(storageItemName) {
+  const prefs = getStorageItem(storageItemName);
+  return getPreferenceObject(prefs);
+}
+function getInitialPreferencesCcpa(storageItemName) {
+  const prefs = getStorageItem(storageItemName);
+  return getPreferenceObject(prefs);
+}
+const consentTypeToPurpose = {
+  analytics_storage: [4],
+  ad_storage: [5],
+  functionality_storage: [2],
+  personalization_storage: [3],
+  security_storage: [2],
+  ad_personalization: [5],
+  ad_user_data: [5]
+};
+const consentTypeToUsPurposes = {
+  analytics_storage: ['s'],
+  ad_storage: ['s', 'sh', 'adv'],
+  functionality_storage: [],
+  personalization_storage: [],
+  security_storage: [],
+  ad_personalization: ['sh', 'adv'],
+  ad_user_data: ['sh', 'adv']
+};
+function getAvailablePurposesStore(purposeList, purposesNeeded) {
+  const result = purposeList.filter(purpose => {
+    return purposesNeeded.map(item => item.toString()).indexOf(purpose.toString()) !== -1;
+  });
+  return result;
+}
+function getPurposeConsentStore(corePrefs, usprPrefs, purposeName) {
+  let result = true;
+  if (GtmObject.keys(corePrefs).length) {
+    const coreAvailablePurposes = getAvailablePurposesStore(GtmObject.keys(corePrefs.purposes || {}), consentTypeToPurpose[purposeName]);
+    const coreResult = coreAvailablePurposes.filter(purpose => {
+      return corePrefs.purposes[purpose] === true;
+    });
+    result = coreResult.length === consentTypeToPurpose[purposeName].length;
+  }
+  if (GtmObject.keys(usprPrefs).length && result) {
+    const usprAvailablePurposes = getAvailablePurposesStore(GtmObject.keys(usprPrefs || {}), consentTypeToUsPurposes[purposeName]);
+    const usprResult = usprAvailablePurposes.filter(purpose => {
+      return usprPrefs[purpose] === true;
+    });
+    result = usprResult.length === consentTypeToUsPurposes[purposeName].length;
+  }
+  return result;
+}
+function hasCookie(cookieDataList) {
+  const cookieData = cookieDataList.filter(cookie => GtmObject.keys(cookie).length);
+  return cookieData.length > 0;
+}
+function getAdStorageStore(corePrefs, usprPrefs) {
+  if (!hasCookie([corePrefs, usprPrefs])) {
+    return data.purposeAdvertising;
+  }
+  const result = getPurposeConsentStore(corePrefs, usprPrefs, 'ad_storage');
+  return result === true ? 'granted' : 'denied';
+}
+function getAdPersonalizationStore(corePrefs, usprPrefs) {
+  if (!hasCookie([corePrefs, usprPrefs])) {
+    return data.purposeAdvertising;
+  }
+  const result = getPurposeConsentStore(corePrefs, usprPrefs, 'ad_personalization');
+  return result === true ? 'granted' : 'denied';
+}
+function getAdUserDataStore(corePrefs, usprPrefs) {
+  if (!hasCookie([corePrefs, usprPrefs])) {
+    return data.purposeAdvertising;
+  }
+  const result = getPurposeConsentStore(corePrefs, usprPrefs, 'ad_user_data');
+  return result === true ? 'granted' : 'denied';
+}
+function getAnalyticsStorageStore(corePrefs, usprPrefs, ccpaPrefs) {
+  if (!hasCookie([corePrefs, usprPrefs, ccpaPrefs])) {
+    return data.purposeMeasurement;
+  }
+  let result = getPurposeConsentStore(corePrefs, usprPrefs, 'analytics_storage');
+  if (ccpaPrefs.hasOwnProperty('uspString') && result) {
+    result = ccpaPrefs.uspString.indexOf('1YN') !== -1;
+  }
+  return result === true ? 'granted' : 'denied';
+}
+function getFunctionalityStorageStore(corePrefs, usprPrefs) {
+  if (!hasCookie([corePrefs, usprPrefs])) {
+    return data.purposeBasic;
+  }
+  const result = getPurposeConsentStore(corePrefs, usprPrefs, 'functionality_storage');
+  return result === true ? 'granted' : 'denied';
+}
+function getPersonalizationStorageStore(corePrefs, usprPrefs) {
+  if (!hasCookie([corePrefs, usprPrefs])) {
+    return data.purposeExperience;
+  }
+  const result = getPurposeConsentStore(corePrefs, usprPrefs, 'personalization_storage');
+  return result === true ? 'granted' : 'denied';
+}
+function getSecurityStorageStore(corePrefs, usprPrefs) {
+  if (!hasCookie([corePrefs, usprPrefs])) {
+    return data.purposeBasic;
+  }
+  const result = getPurposeConsentStore(corePrefs, usprPrefs, 'security_storage');
+  return result === true ? 'granted' : 'denied';
 }
 function embedScripts(config, onSuccess, onFail) {
   const channel = data.csChannel;
@@ -1242,6 +1500,45 @@ ___WEB_PERMISSIONS___
                     "boolean": false
                   }
                 ]
+              },
+              {
+                "type": 3,
+                "mapKey": [
+                  {
+                    "type": 1,
+                    "string": "key"
+                  },
+                  {
+                    "type": 1,
+                    "string": "read"
+                  },
+                  {
+                    "type": 1,
+                    "string": "write"
+                  },
+                  {
+                    "type": 1,
+                    "string": "execute"
+                  }
+                ],
+                "mapValue": [
+                  {
+                    "type": 1,
+                    "string": "dataLayer"
+                  },
+                  {
+                    "type": 8,
+                    "boolean": true
+                  },
+                  {
+                    "type": 8,
+                    "boolean": true
+                  },
+                  {
+                    "type": 8,
+                    "boolean": false
+                  }
+                ]
               }
             ]
           }
@@ -1278,6 +1575,37 @@ ___WEB_PERMISSIONS___
       "isEditedByUser": true
     },
     "isRequired": true
+  },
+  {
+    "instance": {
+      "key": {
+        "publicId": "get_cookies",
+        "versionId": "1"
+      },
+      "param": [
+        {
+          "key": "cookieAccess",
+          "value": {
+            "type": 1,
+            "string": "any"
+          }
+        }
+      ]
+    },
+    "clientAnnotations": {
+      "isEditedByUser": true
+    },
+    "isRequired": true
+  },
+  {
+    "instance": {
+      "key": {
+        "publicId": "access_local_storage",
+        "versionId": "1"
+      },
+      "param": []
+    },
+    "isRequired": true
   }
 ]
 
@@ -1288,6 +1616,10 @@ scenarios: []
 
 
 ___NOTES___
+
+2.1.12 - 2025-04-10
+==================
+* Add the consent default feature to the GTM template, https://app.asana.com/1/13327221380952/project/1205073225402078/task/1209809091650401
 
 2.1.11 - 2025-01-25
 ==================
