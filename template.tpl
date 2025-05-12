@@ -323,15 +323,11 @@ ___TEMPLATE_PARAMETERS___
     "selectItems": [
       {
         "value": "auto",
-        "displayValue": "Extended snippet via GTM template"
+        "displayValue": "Automatically via GTM template"
       },
       {
         "value": "manual",
         "displayValue": "Manually"
-      },
-      {
-        "value": "jeeg",
-        "displayValue": "Unified snippet via GTM template"
       }
     ],
     "simpleValueType": true,
@@ -409,31 +405,6 @@ ___TEMPLATE_PARAMETERS___
             "paramName": "embedCS",
             "paramValue": "auto",
             "type": "EQUALS"
-          }
-        ]
-      },
-      {
-        "type": "TEXT",
-        "name": "jeegUrl",
-        "displayName": "Embedding URL",
-        "simpleValueType": true,
-        "enablingConditions": [
-          {
-            "paramName": "embedCS",
-            "paramValue": "jeeg",
-            "type": "EQUALS"
-          }
-        ],
-        "help": "Use it if your embedding contains a link like: \"https://embeds.iubenda.com/widgets/[id].js\"",
-        "valueValidators": [
-          {
-            "type": "NON_EMPTY"
-          },
-          {
-            "type": "REGEX",
-            "args": [
-              "^https://embeds\\.iubenda\\.com/widgets/[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\\.js$"
-            ]
           }
         ]
       }
@@ -597,22 +568,10 @@ function main() {
     }
   });
   setupIubDataLayer();
-  let embedConfig;
   if (data.embedCS === 'auto') {
-    embedConfig = prepareEmbedConfigAuto();
-  } else if (data.embedCS === 'jeeg') {
-    embedConfig = prepareEmbedConfigJeeg();
+    embedCS();
   } else {
     data.gtmOnSuccess();
-  }
-  if (embedConfig) {
-    embedScripts(embedConfig, () => {
-      log('embedded CS scripts');
-      data.gtmOnSuccess();
-    }, () => {
-      log('failed to embed CS scripts');
-      data.gtmOnFailure();
-    });
   }
 }
 function processDataLayerCommand(elem) {
@@ -679,12 +638,12 @@ function setupIubDataLayer() {
     }
   }
 }
-function prepareEmbedConfigAuto() {
+function embedCS() {
   const csConfiguration = JSON.parse(data.csConfigurationJson);
   if (typeof csConfiguration !== 'object') {
     log('csConfiguration is not valid');
     data.gtmOnFailure();
-    return null;
+    return;
   }
   const csLangConfiguration = data.csLangConfigurationJson ? JSON.parse(data.csLangConfigurationJson) : {};
   csConfiguration.googleConsentMode = 'template';
@@ -712,28 +671,13 @@ function prepareEmbedConfigAuto() {
   }
   setInWindow('_iub.csConfiguration', csConfiguration);
   setInWindow('_iub.csLangConfiguration', csLangConfiguration);
-  return csConfiguration;
-}
-function prepareEmbedConfigJeeg() {
-  const url = data.jeegUrl;
-  if (typeof url !== 'string') {
-    log('jeegUrl is not valid');
+  embedScripts(csConfiguration, () => {
+    log('embedded CS scripts');
+    data.gtmOnSuccess();
+  }, () => {
+    log('failed to embed CS scripts');
     data.gtmOnFailure();
-    return null;
-  }
-  const windowIub = copyFromWindow('_iub');
-  if (!windowIub) {
-    setInWindow('_iub', {});
-  }
-  let csConfiguration = copyFromWindow('_iub.csConfiguration');
-  if (!csConfiguration) {
-    csConfiguration = {};
-  }
-  csConfiguration.googleConsentMode = 'template';
-  setInWindow('_iub.csConfiguration', csConfiguration);
-  return {
-    jeegUrl: url
-  };
+  });
 }
 function createDataLayerQueue() {
   if (queryPermission('access_globals', 'readwrite', 'dataLayer')) {
@@ -886,22 +830,18 @@ function getSecurityStorageStore(corePrefs, usprPrefs) {
   return result === true ? 'granted' : 'denied';
 }
 function embedScripts(config, onSuccess, onFail) {
+  const channel = data.csChannel;
   const scriptsToInject = [];
-  if (config.jeegUrl) {
-    scriptsToInject.push(config.jeegUrl);
-  } else {
-    const channel = data.csChannel;
-    if (config.enableTcf || config.enableCMP) {
-      const tcfStub = makeUrl(channel, 'tcf', 'stub.js');
-      const safeTcf = makeUrl(channel, 'tcf', 'safe-tcf.js');
-      scriptsToInject.push(tcfStub, safeTcf);
-    }
-    if (config.enableCcpa) {
-      const ccpaStub = makeUrl(channel, 'ccpa', 'stub.js');
-      scriptsToInject.push(ccpaStub);
-    }
-    scriptsToInject.push(makeUrl(channel, '', 'iubenda_cs.js'));
+  if (config.enableTcf || config.enableCMP) {
+    const tcfStub = makeUrl(channel, 'tcf', 'stub.js');
+    const safeTcf = makeUrl(channel, 'tcf', 'safe-tcf.js');
+    scriptsToInject.push(tcfStub, safeTcf);
   }
+  if (config.enableCcpa) {
+    const ccpaStub = makeUrl(channel, 'ccpa', 'stub.js');
+    scriptsToInject.push(ccpaStub);
+  }
+  scriptsToInject.push(makeUrl(channel, '', 'iubenda_cs.js'));
   let scriptsInjected = 0;
   let failed = false;
   const localOnSuccess = () => {
@@ -1625,10 +1565,6 @@ ___WEB_PERMISSIONS___
               {
                 "type": 1,
                 "string": "https://cdn.iubenda.com/cs/*.js"
-              },
-              {
-                "type": 1,
-                "string": "https://embeds.iubenda.com/widgets/*.js"
               }
             ]
           }
@@ -1680,10 +1616,6 @@ scenarios: []
 
 
 ___NOTES___
-
-2.2.0 - 2025-05-07
-==================
-* Add support for JEEG, https://app.asana.com/0/0/1209076786249844/f
 
 2.1.12 - 2025-04-10
 ==================
