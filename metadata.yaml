@@ -15,7 +15,7 @@
 homepage: "https://www.iubenda.com"
 documentation: "https://www.iubenda.com/en/help/1177-cookie-solution-getting-started"
 versions:
-  - sha: a193ae548b0a58bcb59fa648d88f39a491b8ae9b
+  - sha: 6c6769e02cb97d0c83ded1532dd9dd7285e28fc4
     changeNotes: Add support for JEEG
   - sha: ec61ab5fc72889b49dfb6fbdbb59e300f951e7b5
     changeNotes: Add the consent default feature to the GTM template
