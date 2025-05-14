@@ -888,8 +888,10 @@ function getSecurityStorageStore(corePrefs, usprPrefs) {
 function embedScripts(config, onSuccess, onFail) {
   const scriptsToInject = [];
   if (config.jeegUrl) {
+    log("Loading iubenda's unified snippet");
     scriptsToInject.push(config.jeegUrl);
   } else {
+    log("Loading iubenda's extended snippet");
     const channel = data.csChannel;
     if (config.enableTcf || config.enableCMP) {
       const tcfStub = makeUrl(channel, 'tcf', 'stub.js');
@@ -1680,6 +1682,10 @@ scenarios: []
 
 
 ___NOTES___
+
+2.2.1 - 2025-05-14
+==================
+* Add extra logs, https://app.asana.com/0/0/1210248385958758/f
 
 2.2.0 - 2025-05-07
 ==================
