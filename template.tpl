@@ -316,6 +316,13 @@ ___TEMPLATE_PARAMETERS___
     "defaultValue": true
   },
   {
+    "type": "CHECKBOX",
+    "name": "uet",
+    "checkboxText": "Use Microsoft UET Consent Mode",
+    "simpleValueType": true,
+    "defaultValue": false
+  },
+  {
     "type": "SELECT",
     "name": "embedCS",
     "displayName": "How to embed CS",
@@ -517,6 +524,7 @@ const callLater = require('callLater');
 const getCookieValues = require('getCookieValues');
 const localStorage = require('localStorage');
 const queryPermission = require('queryPermission');
+const uetq = createQueue('uetq');
 const dataLayerPush = createDataLayerQueue();
 const STORAGE_PREFIX = '_iub_cs-';
 const defaultConsentFromStorageActive = canUseDefaultConsentFromStorage();
@@ -578,6 +586,11 @@ function main() {
     dataLayerPush({
       event: 'iubenda_gtm_default_consent_event'
     });
+    if (data.uet) {
+      uetq('consent', 'default', {
+        ad_storage: getAdStorageStore(initialPreferencesCore, initialPreferencesUspr)
+      });
+    }
   } else {
     setDefaultConsentState({
       analytics_storage: data.purposeMeasurement,
@@ -642,6 +655,11 @@ function updateConsent(opts) {
   if (GtmObject.keys(payload).length !== 0) {
     updateConsentState(payload);
     isFirstUpdate = false;
+  }
+  if (data.uet && typeof payload.ad_storage !== 'undefined') {
+    uetq('consent', 'update', {
+      ad_storage: payload.ad_storage
+    });
   }
 }
 function setupIubDataLayer() {
@@ -1601,6 +1619,45 @@ ___WEB_PERMISSIONS___
                     "boolean": false
                   }
                 ]
+              },
+              {
+                "type": 3,
+                "mapKey": [
+                  {
+                    "type": 1,
+                    "string": "key"
+                  },
+                  {
+                    "type": 1,
+                    "string": "read"
+                  },
+                  {
+                    "type": 1,
+                    "string": "write"
+                  },
+                  {
+                    "type": 1,
+                    "string": "execute"
+                  }
+                ],
+                "mapValue": [
+                  {
+                    "type": 1,
+                    "string": "uetq"
+                  },
+                  {
+                    "type": 8,
+                    "boolean": true
+                  },
+                  {
+                    "type": 8,
+                    "boolean": true
+                  },
+                  {
+                    "type": 8,
+                    "boolean": false
+                  }
+                ]
               }
             ]
           }
@@ -1682,6 +1739,10 @@ scenarios: []
 
 
 ___NOTES___
+
+2.3.0 - 2025-06-25
+==================
+* Add support for Microsoft UET inside GTM template, https://app.asana.com/1/13327221380952/project/1200896321422485/task/1209387092074102
 
 2.2.1 - 2025-05-14
 ==================
