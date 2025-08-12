@@ -443,6 +443,19 @@ ___TEMPLATE_PARAMETERS___
             ]
           }
         ]
+      },
+      {
+        "type": "CHECKBOX",
+        "name": "emitGtmEvents",
+        "checkboxText": "Enable emitGtmEvents",
+        "simpleValueType": true,
+        "enablingConditions": [
+          {
+            "paramName": "embedCS",
+            "paramValue": "manual",
+            "type": "NOT_EQUALS"
+          }
+        ]
       }
     ]
   },
@@ -508,12 +521,77 @@ ___TEMPLATE_PARAMETERS___
 
 ___SANDBOXED_JS_FOR_WEB_TEMPLATE___
 
+const GtmObject = require('Object');
+const JSON = require('JSON');
+/* global _iub */
+function isSameAsLastUpdate(payload, lastUpdate) {
+  if (!lastUpdate) {
+    return false;
+  }
+  const lastUpdateKeys = GtmObject.keys(lastUpdate).sort();
+  const payloadKeys = GtmObject.keys(payload).sort();
+  const hasMissingKeys = payloadKeys.some(key => lastUpdateKeys.indexOf(key) === -1);
+  if (hasMissingKeys) {
+    return false;
+  }
+  const hasDifferentValues = payloadKeys.some(key => lastUpdate[key] !== payload[key]);
+  if (hasDifferentValues) {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Get the payload for the update consent command
+ *
+ * @param {GtmObject} defaultConsent - The default consent, if available.
+ * @param {*} lastUpdate - The last update payload, if available.
+ * @param {*} opts - Options for the consent update.
+ * @returns {GtmObject|null} Returns the payload object or null if no update is needed.
+ */
+function getUpdateConsentPayload(defaultConsent, lastUpdate, opts) {
+  const shouldCheckDefault = !!lastUpdate;
+  const payload = {};
+  for (const key of GtmObject.keys(opts)) {
+    const val = opts[key];
+    if (typeof val !== 'undefined') {
+      payload[key] = val ? 'granted' : 'denied';
+      continue;
+    }
+    if (!shouldCheckDefault) {
+      continue;
+    }
+    const hasDefault = defaultConsent && defaultConsent[key];
+    payload[key] = hasDefault ? defaultConsent[key] : 'denied';
+  }
+  if (GtmObject.keys(payload).length === 0) {
+    // No need to send an update command
+    return null;
+  }
+  if (isSameAsLastUpdate(payload, lastUpdate)) {
+    // No need for an update
+    return null;
+  }
+  return payload;
+}
+function mergePayloads(lastUpdate, payload) {
+  if (!lastUpdate) {
+    return payload;
+  }
+  const merged = {};
+  for (const key of GtmObject.keys(lastUpdate)) {
+    merged[key] = lastUpdate[key];
+  }
+  for (const key of GtmObject.keys(payload)) {
+    merged[key] = payload[key];
+  }
+  return merged;
+}
+
 const log = require('logToConsole');
 const gtagSet = require('gtagSet');
 const setDefaultConsentState = require('setDefaultConsentState');
 const updateConsentState = require('updateConsentState');
-const GtmObject = require('Object');
-const JSON = require('JSON');
 const makeInteger = require('makeInteger');
 const copyFromWindow = require('copyFromWindow');
 const setInWindow = require('setInWindow');
@@ -533,7 +611,6 @@ if (defaultConsentFromStorageActive) {
     event: 'iubenda_gtm_ready_event'
   });
 }
-let isFirstUpdate = true;
 let defaultConsent = null;
 const consentTypes = {
   analytics_storage: true,
@@ -635,27 +712,14 @@ function processDataLayerCommand(elem) {
     }
   }
 }
+let lastUpdate = null;
 function updateConsent(opts) {
-  const shouldCheckDefault = !isFirstUpdate;
-  const payload = {};
-  for (const key of GtmObject.keys(opts)) {
-    if (consentTypes[key]) {
-      const val = opts[key];
-      if (typeof val !== 'undefined') {
-        payload[key] = val ? 'granted' : 'denied';
-        continue;
-      }
-      if (!shouldCheckDefault) {
-        continue;
-      }
-      const hasDefault = defaultConsent && defaultConsent[key];
-      payload[key] = hasDefault ? defaultConsent[key] : 'denied';
-    }
+  const payload = getUpdateConsentPayload(defaultConsent, lastUpdate, opts);
+  if (!payload) {
+    return;
   }
-  if (GtmObject.keys(payload).length !== 0) {
-    updateConsentState(payload);
-    isFirstUpdate = false;
-  }
+  lastUpdate = mergePayloads(lastUpdate, payload);
+  updateConsentState(payload);
   if (data.uet && typeof payload.ad_storage !== 'undefined') {
     uetq('consent', 'update', {
       ad_storage: payload.ad_storage
@@ -706,6 +770,9 @@ function prepareEmbedConfigAuto() {
   }
   const csLangConfiguration = data.csLangConfigurationJson ? JSON.parse(data.csLangConfigurationJson) : {};
   csConfiguration.googleConsentMode = 'template';
+  if (data.emitGtmEvents) {
+    csConfiguration.emitGtmEvents = true;
+  }
   if (defaultConsentFromStorageActive) {
     csConfiguration.callback = {};
     csConfiguration.callback.onReady = () => {
@@ -748,6 +815,9 @@ function prepareEmbedConfigJeeg() {
     csConfiguration = {};
   }
   csConfiguration.googleConsentMode = 'template';
+  if (data.emitGtmEvents) {
+    csConfiguration.emitGtmEvents = true;
+  }
   setInWindow('_iub.csConfiguration', csConfiguration);
   return {
     jeegUrl: url
@@ -1739,6 +1809,10 @@ scenarios: []
 
 
 ___NOTES___
+
+2.4.0 - 2025-08-12
+==================
+* Enable emitGtmEvents from GTM template, https://app.asana.com/0/0/1210829685859343/f
 
 2.3.0 - 2025-06-25
 ==================

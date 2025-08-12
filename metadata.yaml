@@ -15,6 +15,8 @@
 homepage: "https://www.iubenda.com"
 documentation: "https://www.iubenda.com/en/help/1177-cookie-solution-getting-started"
 versions:
+  - sha: 57760e40eebf8b1973d66d0addbff686ad8faa3c
+    changeNotes: Enable emitGtmEvents from GTM template
   - sha: 0a35735569cc3489903e99d4323baa7f868f8e40
     changeNotes: Add support for Microsoft UET inside GTM template
   - sha: 2d8dc60ac3117108f162630e29198f580bf88b90
