@@ -462,15 +462,14 @@ ___TEMPLATE_PARAMETERS___
   {
     "type": "GROUP",
     "name": "defaultConsentStorageGroup",
-    "displayName": "Apply consent default from storage (experimental)",
+    "displayName": "Apply consent default from storage",
     "groupStyle": "ZIPPY_CLOSED",
     "subParams": [
       {
         "type": "CHECKBOX",
         "name": "enableDefaultConsentFromStorage",
         "checkboxText": "Set the default consent by reading the browser storage",
-        "simpleValueType": true,
-        "help": "This feature is experimental."
+        "simpleValueType": true
       },
       {
         "type": "SELECT",
@@ -1809,6 +1808,10 @@ scenarios: []
 
 
 ___NOTES___
+
+2.4.1 - 2026-05-04
+==================
+* Remove experimental labels from GTM default consent, https://app.asana.com/0/0/1213994105814087/f
 
 2.4.0 - 2025-08-12
 ==================
