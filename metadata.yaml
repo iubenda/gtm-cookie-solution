@@ -15,8 +15,10 @@
 homepage: "https://www.iubenda.com"
 documentation: "https://www.iubenda.com/en/help/1177-cookie-solution-getting-started"
 versions:
+  # Latest version
   - sha: 734b6a54d0d9f6fa060a682c56885fc12225d508
     changeNotes: Remove experimental label from default consent
+  # Older versions
   - sha: 57760e40eebf8b1973d66d0addbff686ad8faa3c
     changeNotes: Enable emitGtmEvents from GTM template
   - sha: 0a35735569cc3489903e99d4323baa7f868f8e40
