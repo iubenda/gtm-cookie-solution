@@ -650,15 +650,18 @@ function main() {
     log('iubenda - CORE= ', initialPreferencesCore);
     log('iubenda - USPR= ', initialPreferencesUspr);
     log('iubenda - CCPA= ', initialPreferencesCcpa);
-    setDefaultConsentState({
+    const defaultFromStorage = {
       ad_storage: getAdStorageStore(initialPreferencesCore, initialPreferencesUspr),
       ad_personalization: getAdPersonalizationStore(initialPreferencesCore, initialPreferencesUspr),
       ad_user_data: getAdUserDataStore(initialPreferencesCore, initialPreferencesUspr),
       analytics_storage: getAnalyticsStorageStore(initialPreferencesCore, initialPreferencesUspr, initialPreferencesCcpa),
       functionality_storage: getFunctionalityStorageStore(initialPreferencesCore, initialPreferencesUspr),
       personalization_storage: getPersonalizationStorageStore(initialPreferencesCore, initialPreferencesUspr),
-      security_storage: getSecurityStorageStore(initialPreferencesCore, initialPreferencesUspr)
-    });
+      security_storage: getSecurityStorageStore(initialPreferencesCore, initialPreferencesUspr),
+      wait_for_update: makeInteger(data.waitForUpdate)
+    };
+    log('iubenda - default consent from storage = ', defaultFromStorage);
+    setDefaultConsentState(defaultFromStorage);
     dataLayerPush({
       event: 'iubenda_gtm_default_consent_event'
     });
@@ -858,7 +861,14 @@ function getStorageItemNameCcpa() {
 function getStorageItem(itemName) {
   log('storageType = ', data.storageType);
   if (data.storageType === 'localStorage') {
-    return localStorage(itemName);
+    // localStorage is an object (getItem/setItem/removeItem), not a function. getItem() returns a string or null;
+    // wrap it in an array so getPreferenceObject() gets the same shape as from getCookieValues().
+    if (!queryPermission('access_local_storage', 'read', itemName)) {
+      log('iubenda - no permission to read localStorage key ', itemName);
+      return [];
+    }
+    const value = localStorage.getItem(itemName);
+    return value ? [value] : [];
   }
   return getCookieValues(itemName);
 }
@@ -902,6 +912,11 @@ function getPurposeConsentStore(corePrefs, usprPrefs, purposeName) {
   let result = true;
   if (GtmObject.keys(corePrefs).length) {
     const coreAvailablePurposes = getAvailablePurposesStore(GtmObject.keys(corePrefs.purposes || {}), consentTypeToPurpose[purposeName]);
+    if (coreAvailablePurposes.length === 0) {
+      // None of the purposes this consent type depends on is used on the site, so the visitor was never asked
+      // about them: keep the default configured in the tag instead of turning it into 'denied'.
+      return 'default';
+    }
     const coreResult = coreAvailablePurposes.filter(purpose => {
       return corePrefs.purposes[purpose] === true;
     });
@@ -925,6 +940,9 @@ function getAdStorageStore(corePrefs, usprPrefs) {
     return data.purposeAdvertising;
   }
   const result = getPurposeConsentStore(corePrefs, usprPrefs, 'ad_storage');
+  if (result !== true && result !== false) {
+    return data.purposeAdvertising;
+  }
   return result === true ? 'granted' : 'denied';
 }
 function getAdPersonalizationStore(corePrefs, usprPrefs) {
@@ -932,6 +950,9 @@ function getAdPersonalizationStore(corePrefs, usprPrefs) {
     return data.purposeAdvertising;
   }
   const result = getPurposeConsentStore(corePrefs, usprPrefs, 'ad_personalization');
+  if (result !== true && result !== false) {
+    return data.purposeAdvertising;
+  }
   return result === true ? 'granted' : 'denied';
 }
 function getAdUserDataStore(corePrefs, usprPrefs) {
@@ -939,6 +960,9 @@ function getAdUserDataStore(corePrefs, usprPrefs) {
     return data.purposeAdvertising;
   }
   const result = getPurposeConsentStore(corePrefs, usprPrefs, 'ad_user_data');
+  if (result !== true && result !== false) {
+    return data.purposeAdvertising;
+  }
   return result === true ? 'granted' : 'denied';
 }
 function getAnalyticsStorageStore(corePrefs, usprPrefs, ccpaPrefs) {
@@ -949,6 +973,9 @@ function getAnalyticsStorageStore(corePrefs, usprPrefs, ccpaPrefs) {
   if (ccpaPrefs.hasOwnProperty('uspString') && result) {
     result = ccpaPrefs.uspString.indexOf('1YN') !== -1;
   }
+  if (result !== true && result !== false) {
+    return data.purposeMeasurement;
+  }
   return result === true ? 'granted' : 'denied';
 }
 function getFunctionalityStorageStore(corePrefs, usprPrefs) {
@@ -956,6 +983,9 @@ function getFunctionalityStorageStore(corePrefs, usprPrefs) {
     return data.purposeBasic;
   }
   const result = getPurposeConsentStore(corePrefs, usprPrefs, 'functionality_storage');
+  if (result !== true && result !== false) {
+    return data.purposeBasic;
+  }
   return result === true ? 'granted' : 'denied';
 }
 function getPersonalizationStorageStore(corePrefs, usprPrefs) {
@@ -963,6 +993,9 @@ function getPersonalizationStorageStore(corePrefs, usprPrefs) {
     return data.purposeExperience;
   }
   const result = getPurposeConsentStore(corePrefs, usprPrefs, 'personalization_storage');
+  if (result !== true && result !== false) {
+    return data.purposeExperience;
+  }
   return result === true ? 'granted' : 'denied';
 }
 function getSecurityStorageStore(corePrefs, usprPrefs) {
@@ -970,6 +1003,9 @@ function getSecurityStorageStore(corePrefs, usprPrefs) {
     return data.purposeBasic;
   }
   const result = getPurposeConsentStore(corePrefs, usprPrefs, 'security_storage');
+  if (result !== true && result !== false) {
+    return data.purposeBasic;
+  }
   return result === true ? 'granted' : 'denied';
 }
 function embedScripts(config, onSuccess, onFail) {
